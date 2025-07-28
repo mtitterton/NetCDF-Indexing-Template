@@ -329,7 +329,7 @@ class string_parse_function(File_List):
 class overlapping_data(File_List):
     def __init__(self, surrounding_files, new_file_names):
         self.surrounding_files = surrounding_files
-        self.new_file_names = self.new_file_names
+        self.new_file_names = new_file_names
 
     def eliminate_repeats(self):
         for new_index, item_name in enumerate(self.file_list):
@@ -606,38 +606,24 @@ class overlapping_data(File_List):
             slope = (arr[valid_idx[-1]] - arr[valid_idx[-2]]) / (valid_idx[-1] - valid_idx[-2])
             for i in range(end + 1, n):
                 result[i] = result[i - 1] + slope
-                
+
         return result
     
     def fill_lat_lon(self):
-        for i, item in enumerate(self.new_file):
-            Nx = 8112 + (2*1622)
-            Ny = 8112 + (2*1622)
+        for item in enumerate(self.new_file):
 
             ds = xr.open_dataset(item)
             lat_var = ds.variables['lat']
             lon_var = ds.variables['lon']
-            band_var = ds.variables['Band1']
 
             lat_values = lat_var.values
             lon_values = lon_var.values
-            band_values = band_var.values
-            print(lat_values)
-            lat_filled = interpolate_lat_lon(lat_values)
-            print(lat_filled)
-            lon_filled = interpolate_lat_lon(lon_values)
+            lat_filled = self.interpolate_lat_lon(lat_values)
+            lon_filled = self.interpolate_lat_lon(lon_values)
 
-            base, ext = os.path.splitext(item)
-            new_name = base + "_final" + ext
-            ncfile = Dataset(new_name, mode='w', format='NETCDF4_CLASSIC')
-            ncfile.createDimension('lat', Ny)
-            ncfile.createDimension('lon', Nx)
-            Band1 = ncfile.createVariable('Band1',np.float32,('lat','lon'))
-            lon_variable_new = ncfile.createVariable('lon', np.float32, ('lon'))
-            lat_variable_new = ncfile.createVariable('lat', np.float32, ('lat'))
-            Band1[:,:] = band_values
-            lat_variable_new[:] = lat_filled
-            lon_variable_new[:] = lon_filled
+            ds.variables['lat'] = lat_filled
+            ds.variables['lon'] = lon_filled
+            ds.close()
 
 
 def main():
@@ -705,6 +691,12 @@ def main():
     working_class = string_parse_function(working_file_list)
     working_class.cut_string()
     working_class.check_boxes()
+    working_class.add_data()
+    new_file_names = working_class.new_file_names
+    surrounding_file_names = working_class.surrounding_file_names
+    working_class2 = overlapping_data(surrounding_file_names, new_file_names)
+    working_class2.eliminate_repeats()
+    working_class2.fill_lat_lon()
 
 if __name__ == main():
     main()
