@@ -13,16 +13,17 @@ import numpy as np
 
 class File_List:
 
-    def __init__(self, file_list):
+    def __init__(self, file_list = None):
         self.file_list = file_list
-        self.self.Nx = 8112
-        self.self.Ny = 8112
+        self.Nx = 8112
+        self.Ny = 8112
         self.extend_val = 1622
     
 
 class string_parse_function(File_List):
 
-    def __init__(self):
+    def __init__(self, file_list):
+        super().__init__(file_list)
         self.row_val = 0
         self.col_val = 0
         self.n_columns = 8
@@ -38,12 +39,8 @@ class string_parse_function(File_List):
     def create_netcdf(self):
         # method to create a new empty netcdf file for each given file with a larger size
         # value to extend each file by
-        self.val = 1622
-
         for i, item in enumerate(self.file_list):
             # lat and lon lengths
-            self.Nx = 8112 + (2*self.val)
-            self.Ny = 8112 + (2*self.val)
         
             # create netcdf file with variables: lat, lon, Band1 (bathymetry) and dimensions: lat, lon
             base, ext = os.path.splitext(item)
@@ -115,7 +112,6 @@ class string_parse_function(File_List):
             # append ponts and filenames to dictionaries
             self.forward[(longitude, latitude)] = item
             self.reverse[item] = [longitude,latitude]
-            print(self.coordinate_list)
 
 
     def check_boxes(self):
@@ -153,7 +149,9 @@ class string_parse_function(File_List):
             for index, item2 in enumerate(self.checking_list[i]):
                 if item2 in self.coordinate_list:
                     # if present, add to surrounding files for that file
-                    self.surrounding_file_names[i][index] = item2
+                    coord_tuple = tuple(item2)
+                    file_to_add = self.forward[coord_tuple]
+                    self.surrounding_file_names[i][index] = file_to_add
                 else:
                     # if not present, fill place with 0
                     self.surrounding_file_names[i][index] = 0
@@ -163,171 +161,175 @@ class string_parse_function(File_List):
         # method for appending data onto the original file
         # takes the bigger file corresponding to the original file and indexes from the surrounding files
 
+        for index1, item1 in enumerate(self.surrounding_file_names):
+            for index, item in enumerate(self.surrounding_file_names[index1]):
+                appending_to = self.file_list[index]
+                self.val = 1622
+                self.Nx = 8112
+                self.Ny = 8112
+                length = self.Nx + 2*self.val
 
-        for index, item in enumerate(self.surrounding_file_names):
-            appending_to = self.file_list[index]
-            self.val = 1622
-            self.Nx = 8112
-            self.Ny = 8112
-            length = self.Nx + 2*self.val
+                print(item)
+                if item != 0:
+                    if index == 0:
+                        # north
+                        # grab data from original dataset
+                        print(item)
+                        ds = xr.open_dataset(item)
 
-            if item != 0:
-                if index == 0:
-                    # north
-                    # grab data from original dataset
-                    ds = xr.open_dataset(item)
+                        # assign variables, multiple steps to ensure they're converted to numpy arrays
+                        var = ds.variables['Band1']
+                        new_var = var.values
+                        lon_var = ds.variables['lon']
+                        lon_values = lon_var.values
+                        lat_var = ds.variables['lat']
+                        lat_values = lat_var.values
+                        slice_taken_lat = lat_values[0:self.val]
+                        slice_taken = new_var[0:self.val, :]
+                        ds.close()
 
-                    # assign variables, multiple steps to ensure they're converted to numpy arrays
-                    var = ds.variables['Band1']
-                    new_var = var.values
-                    lon_var = ds.variables['lon']
-                    lon_values = lon_var.values
-                    lat_var = ds.variables['lat']
-                    lat_values = lat_var.values
-                    slice_taken_lat = lat_values[0:self.val]
-                    slice_taken = new_var[0:self.val, :]
-                    ds.close()
+                        # grab bigger file
+                        file_of_interest = self.datasets[appending_to]
+                        with Dataset(file_of_interest, 'r+') as ds:
+                            # assign slices from original data slice to new bigger file, making sure to keep the slice sizes the same
+                            ds.variables['Band1'][length-self.val:length, self.val:length-self.val] = slice_taken
+                            ds.variables['lat'][length-self.val: length] = slice_taken_lat
 
-                    # grab bigger file
-                    file_of_interest = self.datasets[appending_to]
-                    with Dataset(file_of_interest, 'r+') as ds:
-                        # assign slices from original data slice to new bigger file, making sure to keep the slice sizes the same
-                        ds.variables['Band1'][length-self.val:length, val:length-self.val] = slice_taken
-                        ds.variables['lat'][length-self.val: length] = slice_taken_lat
+                    elif index == 1:
+                        # east
+                        ds = xr.open_dataset(item)
+                        var = ds.variables['Band1']
+                        new_var = var.values
+                        slice_taken = new_var[:, 0:self.val]
+                        lon_var = ds.variables['lon']
+                        lon_values = lon_var.values
+                        lat_var = ds.variables['lat']
+                        lat_values = lat_var.values
+                        slice_taken_lon = lon_values[0:self.val]
+                        ds.close()
+                        file_of_interest = self.datasets[appending_to]
+                        with Dataset(file_of_interest, 'r+') as ds:
+                            ds.variables['Band1'][self.val:length-self.val, length-self.val:length] = slice_taken
+                            ds.variables['lon'][length-self.val:length] = slice_taken_lon
 
-                elif index == 1:
-                    # east
-                    ds = xr.open_dataset(item)
-                    var = ds.variables['Band1']
-                    new_var = var.values
-                    slice_taken = new_var[:, 0:self.val]
-                    lon_var = ds.variables['lon']
-                    lon_values = lon_var.values
-                    lat_var = ds.variables['lat']
-                    lat_values = lat_var.values
-                    slice_taken_lon = lon_values[0:self.val]
-                    ds.close()
-                    file_of_interest = self.datasets[appending_to]
-                    with Dataset(file_of_interest, 'r+') as ds:
-                        ds.variables['Band1'][self.val:length-self.val, length-self.val:length] = slice_taken
-                        ds.variables['lon'][length-self.val:length] = slice_taken_lon
+                    elif index == 2:
+                        # south
+                        ds = xr.open_dataset(item)
+                        var = ds.variables['Band1']
+                        new_var = var.values
+                        lon_var = ds.variables['lon']
+                        lon_values = lon_var.values
+                        lat_var = ds.variables['lat']
+                        lat_values = lat_var.values
+                        slice_taken = new_var[self.Nx-self.val-1:self.Nx-1, :]
+                        slice_taken_lat = lat_values[self.Nx-self.val-1:self.Nx-1]
+                        ds.close()
+                        file_of_interest = self.datasets[appending_to]
+                        with Dataset(file_of_interest, 'r+') as ds:
+                            ds.variables['Band1'][0:self.val, self.val:length-self.val] = slice_taken
+                            ds.variables['lat'][0:self.val] = slice_taken_lat
 
-                elif index == 2:
-                    # south
-                    ds = xr.open_dataset(item)
-                    var = ds.variables['Band1']
-                    new_var = var.values
-                    lon_var = ds.variables['lon']
-                    lon_values = lon_var.values
-                    lat_var = ds.variables['lat']
-                    lat_values = lat_var.values
-                    slice_taken = new_var[self.Nx-self.val-1:self.Nx-1, :]
-                    slice_taken_lat = lat_values[self.Nx-self.val-1:self.self.Nx-1]
-                    ds.close()
-                    file_of_interest = self.datasets[appending_to]
-                    with Dataset(file_of_interest, 'r+') as ds:
-                        ds.variables['Band1'][0:self.val, self.val:length-self.val] = slice_taken
-                        ds.variables['lat'][0:self.val] = slice_taken_lat
+                    elif index == 3:
+                        # west
+                        ds = xr.open_dataset(item)
+                        var = ds.variables['Band1']
+                        new_var = var.values
+                        lon_var = ds.variables['lon']
+                        lon_values = lon_var.values
+                        lat_var = ds.variables['lat']
+                        lat_values = lat_var.values
+                        slice_taken = new_var[:, self.Nx-self.val-1:self.Nx-1]
+                        slice_taken_lon = lon_values[self.Nx-self.val-1:self.Nx-1]
+                        ds.close()
+                        file_of_interest = self.datasets[appending_to]
+                        with Dataset(file_of_interest, 'r+') as ds:
+                            ds.variables['Band1'][self.val:length-self.val, 0:self.val] = slice_taken
+                            ds.variables['lon'][0:self.val] = slice_taken_lon
 
-                elif index == 3:
-                    # west
-                    ds = xr.open_dataset(item)
-                    var = ds.variables['Band1']
-                    new_var = var.values
-                    lon_var = ds.variables['lon']
-                    lon_values = lon_var.values
-                    lat_var = ds.variables['lat']
-                    lat_values = lat_var.values
-                    slice_taken = new_var[:, self.Nx-self.val-1:self.Nx-1]
-                    slice_taken_lon = lon_values[self.Nx-self.val-1:self.Nx-1]
-                    ds.close()
-                    file_of_interest = self.datasets[appending_to]
-                    with Dataset(file_of_interest, 'r+') as ds:
-                        ds.variables['Band1'][self.val:length-self.val, 0:self.val] = slice_taken
-                        ds.variables['lon'][0:self.val] = slice_taken_lon
-
-                elif index == 4:
-                    # NW
-                    ds = xr.open_dataset(item)
-                    var = ds.variables['Band1']
-                    new_var = var.values
-                    lon_var = ds.variables['lon']
-                    lon_values = lon_var.values
-                    lat_var = ds.variables['lat']
-                    lat_values = lat_var.values
-                    slice_taken_lon = lon_values[self.Ny-self.val-1: self.Nx-1]
-                    slice_taken_lat = lat_values[0:self.val]
-                    slice_taken = new_var[0:self.val, self.Nx-self.val-1:self.Nx-1]
-                    ds.close()
-                    file_of_interest = self.datasets[appending_to]
-                    with Dataset(file_of_interest, 'r+') as ds:
-                        ds.variables['Band1'][length-self.val:length, 0:self.val] = slice_taken
-                        ds.variables['lon'][0:self.val] = slice_taken_lon
-                        ds.variables['lat'][length-self.val:length] = slice_taken_lat
+                    elif index == 4:
+                        # NW
+                        ds = xr.open_dataset(item)
+                        var = ds.variables['Band1']
+                        new_var = var.values
+                        lon_var = ds.variables['lon']
+                        lon_values = lon_var.values
+                        lat_var = ds.variables['lat']
+                        lat_values = lat_var.values
+                        slice_taken_lon = lon_values[self.Ny-self.val-1: self.Nx-1]
+                        slice_taken_lat = lat_values[0:self.val]
+                        slice_taken = new_var[0:self.val, self.Nx-self.val-1:self.Nx-1]
+                        ds.close()
+                        file_of_interest = self.datasets[appending_to]
+                        with Dataset(file_of_interest, 'r+') as ds:
+                            ds.variables['Band1'][length-self.val:length, 0:self.val] = slice_taken
+                            ds.variables['lon'][0:self.val] = slice_taken_lon
+                            ds.variables['lat'][length-self.val:length] = slice_taken_lat
 
 
-                elif index == 5:
-                    # NE
-                    ds = xr.open_dataset(item)
-                    var = ds.variables['Band1']
-                    new_var = var.values
-                    lon_var = ds.variables['lon']
-                    lon_values = lon_var.values
-                    lat_var = ds.variables['lat']
-                    lat_values = lat_var.values
-                    slice_taken_lon = lon_values[0:self.val]
-                    slice_taken_lat = lat_values[0:self.val]
-                    slice_taken = new_var[0:self.val, 0:self.val]
-                    ds.close()
-                    file_of_interest = self.datasets[appending_to]
-                    with Dataset(file_of_interest, 'r+') as ds:
-                        ds.variables['Band1'][length-self.val:length, length-self.val:length] = slice_taken
-                        ds.variables['lon'][length-self.val:length] = slice_taken_lon
-                        ds.variables['lat'][length-self.val:length] = slice_taken_lat
+                    elif index == 5:
+                        # NE
+                        ds = xr.open_dataset(item)
+                        var = ds.variables['Band1']
+                        new_var = var.values
+                        lon_var = ds.variables['lon']
+                        lon_values = lon_var.values
+                        lat_var = ds.variables['lat']
+                        lat_values = lat_var.values
+                        slice_taken_lon = lon_values[0:self.val]
+                        slice_taken_lat = lat_values[0:self.val]
+                        slice_taken = new_var[0:self.val, 0:self.val]
+                        ds.close()
+                        file_of_interest = self.datasets[appending_to]
+                        with Dataset(file_of_interest, 'r+') as ds:
+                            ds.variables['Band1'][length-self.val:length, length-self.val:length] = slice_taken
+                            ds.variables['lon'][length-self.val:length] = slice_taken_lon
+                            ds.variables['lat'][length-self.val:length] = slice_taken_lat
 
-                elif index == 6:
-                    # SW
-                    ds = xr.open_dataset(item)
-                    var = ds.variables['Band1']
-                    new_var = var.values
-                    lon_var = ds.variables['lon']
-                    lon_values = lon_var.values
-                    lat_var = ds.variables['lat']
-                    lat_values = lat_var.values
-                    slice_taken = new_var[self.Nx-self.val-1:self.Nx-1, self.Nx-self.val-1:self.Nx-1]
-                    slice_taken_lon = lon_values[self.Nx- self.val - 1: self.Nx -1]
-                    slice_taken_lat = lat_values[self.Nx- self.val - 1: self.Nx -1]
-                    ds.close()
-                    file_of_interest = self.datasets[appending_to]
-                    with Dataset(file_of_interest, 'r+') as ds:
-                        ds.variables['Band1'][0:self.val, 0:self.val] = slice_taken
-                        ds.variables['lon'][0:self.val] = slice_taken_lon
-                        ds.variables['lat'][0:self.val] = slice_taken_lat
+                    elif index == 6:
+                        # SW
+                        ds = xr.open_dataset(item)
+                        var = ds.variables['Band1']
+                        new_var = var.values
+                        lon_var = ds.variables['lon']
+                        lon_values = lon_var.values
+                        lat_var = ds.variables['lat']
+                        lat_values = lat_var.values
+                        slice_taken = new_var[self.Nx-self.val-1:self.Nx-1, self.Nx-self.val-1:self.Nx-1]
+                        slice_taken_lon = lon_values[self.Nx- self.val - 1: self.Nx -1]
+                        slice_taken_lat = lat_values[self.Nx- self.val - 1: self.Nx -1]
+                        ds.close()
+                        file_of_interest = self.datasets[appending_to]
+                        with Dataset(file_of_interest, 'r+') as ds:
+                            ds.variables['Band1'][0:self.val, 0:self.val] = slice_taken
+                            ds.variables['lon'][0:self.val] = slice_taken_lon
+                            ds.variables['lat'][0:self.val] = slice_taken_lat
 
-                elif index == 7:
-                    # SE
-                    ds = xr.open_dataset(item)
-                    var = ds.variables['Band1']
-                    new_var = var.values
-                    lon_var = ds.variables['lon']
-                    lon_values = lon_var.values
-                    lat_var = ds.variables['lat']
-                    lat_values = lat_var.values
-                    slice_taken = new_var[self.Nx-self.val-1:self.Nx-1, 0:self.val]
-                    slice_taken_lon = lon_values[0:self.val]
-                    slice_taken_lat = lat_values[self.Nx- self.val - 1: self.Nx -1]
-                    ds.close()
-                    file_of_interest = self.datasets[appending_to]
-                    with Dataset(file_of_interest, 'r+') as ds:
-                        ds.variables['Band1'][0:self.val, length-self.val:length] = slice_taken
-                        ds.variables['lon'][length-self.val: length] = slice_taken_lon
-                        ds.variables['lat'][0:self.val] = slice_taken_lat
-                else:
-                    print("error")
+                    elif index == 7:
+                        # SE
+                        ds = xr.open_dataset(item)
+                        var = ds.variables['Band1']
+                        new_var = var.values
+                        lon_var = ds.variables['lon']
+                        lon_values = lon_var.values
+                        lat_var = ds.variables['lat']
+                        lat_values = lat_var.values
+                        slice_taken = new_var[self.Nx-self.val-1:self.Nx-1, 0:self.val]
+                        slice_taken_lon = lon_values[0:self.val]
+                        slice_taken_lat = lat_values[self.Nx- self.val - 1: self.Nx -1]
+                        ds.close()
+                        file_of_interest = self.datasets[appending_to]
+                        with Dataset(file_of_interest, 'r+') as ds:
+                            ds.variables['Band1'][0:self.val, length-self.val:length] = slice_taken
+                            ds.variables['lon'][length-self.val: length] = slice_taken_lon
+                            ds.variables['lat'][0:self.val] = slice_taken_lat
+                    else:
+                        print("error")
+
 
 
 class overlapping_data(File_List):
     def __init__(self, surrounding_files, new_file_names):
+        super().__init__()
         self.surrounding_files = surrounding_files
         self.new_file_names = new_file_names
 
@@ -689,6 +691,7 @@ def main():
     ]
 
     working_class = string_parse_function(working_file_list)
+    working_class.create_netcdf()
     working_class.cut_string()
     working_class.check_boxes()
     working_class.add_data()
