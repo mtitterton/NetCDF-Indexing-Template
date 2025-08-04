@@ -162,8 +162,11 @@ class string_parse_function(File_List):
         # takes the bigger file corresponding to the original file and indexes from the surrounding files
 
         for index1, item1 in enumerate(self.surrounding_file_names):
+            print(item1)
             for index, item in enumerate(self.surrounding_file_names[index1]):
-                appending_to = self.file_list[index]
+                print(self.surrounding_file_names[index1])
+                appending_to = self.file_list[index1]
+                print(appending_to)
                 self.val = 1622
                 self.Nx = 8112
                 self.Ny = 8112
@@ -190,6 +193,7 @@ class string_parse_function(File_List):
 
                         # grab bigger file
                         file_of_interest = self.datasets[appending_to]
+                        print(file_of_interest)
                         with Dataset(file_of_interest, 'r+') as ds:
                             # assign slices from original data slice to new bigger file, making sure to keep the slice sizes the same
                             ds.variables['Band1'][length-self.val:length, self.val:length-self.val] = slice_taken
@@ -328,13 +332,13 @@ class string_parse_function(File_List):
 
 
 class overlapping_data(File_List):
-    def __init__(self, surrounding_files, new_file_names):
-        super().__init__()
+    def __init__(self, file_list, surrounding_files, new_file_names):
+        super().__init__(file_list)
         self.surrounding_files = surrounding_files
         self.new_file_names = new_file_names
-
+        self.final_names = []
     def eliminate_repeats(self):
-        for new_index, item_name in enumerate(self.new_file_names):
+        for new_index, item_name in enumerate(self.file_list):
             # method for finding where lat and lon overlap, then doing same indexing technique from concatenating larger files with indexes of overlaps
 
             # initialize all lists as empty and variables as nans
@@ -371,9 +375,13 @@ class overlapping_data(File_List):
             lon_var = ds.variables['lon']
             lon_values = lon_var.values
             first_bound_lat = lat_values[self.val-buffer:self.val+buffer]
+            print("FIRST BOUND LAT: " + str(first_bound_lat))
             first_bound_lon = lon_values[self.val-buffer:self.val+buffer]
+            print("FIRST BOUND LON: " + str(first_bound_lon))
             second_bound_lat = lat_values[length-self.val-buffer:length-self.val+buffer]
+            print("SECOND BOUND LAT: " + str(second_bound_lat))
             second_bound_lon = lon_values[length-self.val-buffer:length-self.val+buffer]
+            print("SECOND BOUND LON: " + str(second_bound_lon))
 
             # for loops to find where the lat and lon overlap by finding where difference is negative or positive (lat versus lon)
             for i, value in enumerate(first_bound_lat[:-1]):
@@ -382,7 +390,7 @@ class overlapping_data(File_List):
                     same_value_index_lat1 = i
                     same_value_lat1 = first_bound_lat[i+1]
                     break
-                
+
             for i, value in enumerate(second_bound_lat[:-1]):
                 difference = second_bound_lat[i+1] - value
                 if difference < 0:
@@ -455,7 +463,6 @@ class overlapping_data(File_List):
             band_original_values = band_original.values
             lat_middle_slice = lat_original_values
             lon_middle_slice = lon_original_values
-            middle_slice_band = band_original_values
             var = ds2.variables['Band1']
             new_var = var.values
             slice_taken = new_var[::]
@@ -477,8 +484,8 @@ class overlapping_data(File_List):
             base, ext = os.path.splitext(item_name)
             new_name = base + "_band" + ext
             ncfile1 = Dataset(new_name, mode='w', format='NETCDF4_CLASSIC')
-            ncfile1.createDimension('lat', 11356)
-            ncfile1.createDimension('lon', 11356)
+            ncfile1.createDimension('lat', length)
+            ncfile1.createDimension('lon', length)
             ncfile1.createVariable('lat', np.float32, ('lat'))
             ncfile1.createVariable('lon', np.float32, ('lon'))
             ncfile1.createVariable('Band1', np.float32, ('lat', 'lon'))
@@ -489,9 +496,10 @@ class overlapping_data(File_List):
             ncfile1.variables['lat'][bottom_lat_diff:length-top_lat_diff] = lat_final
             ncfile1.variables['lon'][left_lon_diff:length-right_lon_diff] = lon_final
             ncfile1.close()
+            self.final_names.append(new_name)
 
             # use same indexing technique as before to take data from surrounding datasets and use the skip lat and lon values
-            for index_val, item2  in enumerate(self.surrounding_file_names[new_index]):
+            for index_val, item2  in enumerate(self.surrounding_files[new_index]):
 
                 if item2 != 0:
                     length = self.Nx + 2*self.val
@@ -555,7 +563,7 @@ class overlapping_data(File_List):
                         ds = xr.open_dataset(item2)
                         var = ds.variables['Band1']
                         new_var = var.values
-                        slice_taken = new_var[same_value_index_lat2+skip_vals_lat2-20+3:self.val, same_value_index_lon2+skip_vals_lon2-20+3:val]
+                        slice_taken = new_var[same_value_index_lat2+skip_vals_lat2-20+3:self.val, same_value_index_lon2+skip_vals_lon2-20+3:self.val]
                         gap1 = same_value_index_lat2+skip_vals_lat2-20+3
                         gap2  = same_value_index_lon2+skip_vals_lon2-20+3
                         ds.close()
@@ -567,8 +575,8 @@ class overlapping_data(File_List):
                         ds = xr.open_dataset(item2)
                         var = ds.variables['Band1']
                         new_var = var.values
-                        slice_taken = new_var[Nx-self.val:self.Nx-self.val+self.val-buffer+skip_vals_lat1, self.Nx-self.val:self.Nx-self.val+self.val-buffer+skip_vals_lon1]
-                        gap1 = self.val - (self.valval - buffer+skip_vals_lat1)
+                        slice_taken = new_var[self.Nx-self.val:self.Nx-self.val+self.val-buffer+skip_vals_lat1, self.Nx-self.val:self.Nx-self.val+self.val-buffer+skip_vals_lon1]
+                        gap1 = self.val - (self.val - buffer+skip_vals_lat1)
                         gap2 = self.val - (self.val - buffer+skip_vals_lon1)
                         ds.close()
                         with Dataset(new_name, 'r+') as ds:
@@ -612,20 +620,18 @@ class overlapping_data(File_List):
         return result
     
     def fill_lat_lon(self):
-        for item in enumerate(self.new_file):
+        for item in self.final_names:
+            with Dataset(item, mode='a') as ds:
+                lat_var = ds.variables['lat']
+                lon_var = ds.variables['lon']
 
-            ds = xr.open_dataset(item)
-            lat_var = ds.variables['lat']
-            lon_var = ds.variables['lon']
+                lat_values = lat_var[:]
+                lon_values = lon_var[:]
+                lat_filled = self.interpolate_lat_lon(lat_values)
+                lon_filled = self.interpolate_lat_lon(lon_values)
 
-            lat_values = lat_var.values
-            lon_values = lon_var.values
-            lat_filled = self.interpolate_lat_lon(lat_values)
-            lon_filled = self.interpolate_lat_lon(lon_values)
-
-            ds.variables['lat'] = lat_filled
-            ds.variables['lon'] = lon_filled
-            ds.close()
+                lat_var[:] = lat_filled
+                lon_var[:] = lon_filled
 
 
 def main():
@@ -690,75 +696,94 @@ def main():
 "ncei19_n41x00_w073x75_2015v1_WGS84.nc"
     ]
 
-    working_new_file_names = [
-"ncei19_n40x25_w074x00_2018v2_WGS84_new3.nc",
-"ncei19_n41x00_w074x00_2015v1_WGS84_new3.nc",
-"ncei19_n39x00_w075x00_2018v2_WGS84_new3.nc",  
-"ncei19_n40x25_w074x25_2018v2_WGS84_new3.nc",  
-"ncei19_n41x00_w074x25_2015v1_WGS84_new3.nc",
-"ncei19_n39x00_w075x25_2014v1_WGS84_new3.nc",  
-"ncei19_n40x25_w074x75_2014v1_WGS84_new3.nc",  
-"ncei19_n41x25_w072x00_2015v1_WGS84_new3.nc",
-"ncei19_n39x00_w075x50_2014v1_WGS84_new3.nc",  
-"ncei19_n40x25_w075x00_2014v1_WGS84_new3.nc", 
-"ncei19_n41x25_w072x25_2015v1_WGS84_new3.nc",
-"ncei19_n39x25_w074x75_2018v2_WGS84_new3.nc", 
-"ncei19_n40x25_w075x25_2014v1_WGS84_new3.nc",  
-"ncei19_n41x25_w072x50_2015v1_WGS84_new3.nc",
-"ncei19_n39x25_w075x00_2018v2_WGS84_new3.nc",  
-"ncei19_n40x50_w074x00_2018v2_WGS84_new3.nc", 
-"ncei19_n41x25_w072x75_2015v1_WGS84_new3.nc",
-"ncei19_n39x25_w075x25_2018v2_WGS84_new3.nc",  
-"ncei19_n40x50_w074x25_2018v2_WGS84_new3.nc",  
-"ncei19_n41x25_w073x00_2016v1_WGS84_new3.nc",
-"ncei19_n39x25_w075x50_2014v1_WGS84_new3.nc",  
-"ncei19_n40x75_w073x00_2015v1_WGS84_new3.nc",  
-"ncei19_n41x25_w073x25_2016v1_WGS84_new3.nc",
-"ncei19_n39x50_w074x50_2018v2_WGS84_new3.nc",  
-"ncei19_n40x75_w073x25_2015v1_WGS84_new3.nc",  
-"ncei19_n41x25_w073x50_2015v1_WGS84_new3.nc",
-"ncei19_n39x50_w074x75_2018v2_WGS84_new3.nc",  
-"ncei19_n40x75_w073x50_2015v1_WGS84_new3.nc",  
-"ncei19_n41x25_w073x75_2015v1_WGS84_new3.nc",
-"ncei19_n39x50_w075x25_2018v2_WGS84_new3.nc",  
-"ncei19_n40x75_w073x75_2015v1_WGS84_new3.nc",  
-"ncei19_n41x25_w074x00_2015v1_WGS84_new3.nc",
-"ncei19_n39x50_w075x50_2018v2_WGS84_new3.nc", 
-"ncei19_n40x75_w074x00_2015v1_WGS84_new3.nc",  
-"ncei19_n41x50_w072x00_2016v1_WGS84_new3.nc",
-"ncei19_n39x50_w075x75_2014v1_WGS84_new3.nc",  
-"ncei19_n40x75_w074x25_2015v1_WGS84_new3.nc", 
-"ncei19_n41x50_w072x25_2016v1_WGS84_new3.nc",
-"ncei19_n39x75_w074x25_2018v2_WGS84_new3.nc",  
-"ncei19_n41x00_w072x25_2015v1_WGS84_new3.nc",  
-"ncei19_n41x50_w072x50_2016v1_WGS84_new3.nc",
-"ncei19_n39x75_w074x50_2018v2_WGS84_new3.nc",  
-"ncei19_n41x00_w072x50_2015v1_WGS84_new3.nc",  
-"ncei19_n41x50_w072x75_2016v1_WGS84_new3.nc",
-"ncei19_n39x75_w075x50_2014v1_WGS84_new3.nc",  
-"ncei19_n41x00_w072x75_2015v1_WGS84_new3.nc",  
-"ncei19_n41x50_w073x00_2016v1_WGS84_new3.nc",
-"ncei19_n39x75_w075x75_2014v1_WGS84_new3.nc",  
-"ncei19_n41x00_w073x00_2015v1_WGS84_new3.nc", 
-"ncei19_n41x50_w074x00_2015v1_WGS84_new3.nc",
-"ncei19_n40x00_w074x25_2018v2_WGS84_new3.nc",  
-"ncei19_n41x00_w073x25_2015v1_WGS84_new3.nc",  
-"ncei19_n41x50_w074x25_2015v1_WGS84_new3.nc",
-"ncei19_n40x00_w075x25_2014v1_WGS84_new3.nc",  
-"ncei19_n41x00_w073x50_2015v1_WGS84_new3.nc", 
-"ncei19_n40x00_w075x50_2014v1_WGS84_new3.nc",  
-"ncei19_n41x00_w073x75_2015v1_WGS84_new3.nc"
-    ]
-   
+    working_new_files = [
+       
+"ncei19_n40x25_w074x00_2018v2_WGS84_new.nc",
+"ncei19_n41x00_w074x00_2015v1_WGS84_new.nc",
+"ncei19_n39x00_w075x00_2018v2_WGS84_new.nc",  
+"ncei19_n40x25_w074x25_2018v2_WGS84_new.nc",  
+"ncei19_n41x00_w074x25_2015v1_WGS84_new.nc",
+"ncei19_n39x00_w075x25_2014v1_WGS84_new.nc",  
+"ncei19_n40x25_w074x75_2014v1_WGS84_new.nc",  
+"ncei19_n41x25_w072x00_2015v1_WGS84_new.nc",
+"ncei19_n39x00_w075x50_2014v1_WGS84_new.nc",  
+"ncei19_n40x25_w075x00_2014v1_WGS84_new.nc", 
+"ncei19_n41x25_w072x25_2015v1_WGS84_new.nc",
+"ncei19_n39x25_w074x75_2018v2_WGS84_new.nc", 
+"ncei19_n40x25_w075x25_2014v1_WGS84_new.nc",  
+"ncei19_n41x25_w072x50_2015v1_WGS84_new.nc",
+"ncei19_n39x25_w075x00_2018v2_WGS84_new.nc",  
+"ncei19_n40x50_w074x00_2018v2_WGS84_new.nc", 
+"ncei19_n41x25_w072x75_2015v1_WGS84_new.nc",
+"ncei19_n39x25_w075x25_2018v2_WGS84_new.nc",  
+"ncei19_n40x50_w074x25_2018v2_WGS84_new.nc",  
+"ncei19_n41x25_w073x00_2016v1_WGS84_new.nc",
+"ncei19_n39x25_w075x50_2014v1_WGS84_new.nc",  
+"ncei19_n40x75_w073x00_2015v1_WGS84_new.nc",  
+"ncei19_n41x25_w073x25_2016v1_WGS84_new.nc",
+"ncei19_n39x50_w074x50_2018v2_WGS84_new.nc",  
+"ncei19_n40x75_w073x25_2015v1_WGS84_new.nc",  
+"ncei19_n41x25_w073x50_2015v1_WGS84_new.nc",
+"ncei19_n39x50_w074x75_2018v2_WGS84_new.nc",  
+"ncei19_n40x75_w073x50_2015v1_WGS84_new.nc",  
+"ncei19_n41x25_w073x75_2015v1_WGS84_new.nc",
+"ncei19_n39x50_w075x25_2018v2_WGS84_new.nc",  
+"ncei19_n40x75_w073x75_2015v1_WGS84_new.nc",  
+"ncei19_n41x25_w074x00_2015v1_WGS84_new.nc",
+"ncei19_n39x50_w075x50_2018v2_WGS84_new.nc", 
+"ncei19_n40x75_w074x00_2015v1_WGS84_new.nc",  
+"ncei19_n41x50_w072x00_2016v1_WGS84_new.nc",
+"ncei19_n39x50_w075x75_2014v1_WGS84_new.nc",  
+"ncei19_n40x75_w074x25_2015v1_WGS84_new.nc", 
+"ncei19_n41x50_w072x25_2016v1_WGS84_new.nc",
+"ncei19_n39x75_w074x25_2018v2_WGS84_new.nc",  
+"ncei19_n41x00_w072x25_2015v1_WGS84_new.nc",  
+"ncei19_n41x50_w072x50_2016v1_WGS84_new.nc",
+"ncei19_n39x75_w074x50_2018v2_WGS84_new.nc",  
+"ncei19_n41x00_w072x50_2015v1_WGS84_new.nc",  
+"ncei19_n41x50_w072x75_2016v1_WGS84_new.nc",
+"ncei19_n39x75_w075x50_2014v1_WGS84_new.nc",  
+"ncei19_n41x00_w072x75_2015v1_WGS84_new.nc",  
+"ncei19_n41x50_w073x00_2016v1_WGS84_new.nc",
+"ncei19_n39x75_w075x75_2014v1_WGS84_new.nc",  
+"ncei19_n41x00_w073x00_2015v1_WGS84_new.nc", 
+"ncei19_n41x50_w074x00_2015v1_WGS84_new.nc",
+"ncei19_n40x00_w074x25_2018v2_WGS84_new.nc",  
+"ncei19_n41x00_w073x25_2015v1_WGS84_new.nc",  
+"ncei19_n41x50_w074x25_2015v1_WGS84_new.nc",
+"ncei19_n40x00_w075x25_2014v1_WGS84_new.nc",  
+"ncei19_n41x00_w073x50_2015v1_WGS84_new.nc", 
+"ncei19_n40x00_w075x50_2014v1_WGS84_new.nc",  
+"ncei19_n41x00_w073x75_2015v1_WGS84_new.nc"
+   ]
     working_surrounding_files = [['ncei19_n40x50_w074x00_2018v2_WGS84.nc', 0, 0, 'ncei19_n40x25_w074x25_2018v2_WGS84.nc', 'ncei19_n40x50_w074x25_2018v2_WGS84.nc', 0, 'ncei19_n40x00_w074x25_2018v2_WGS84.nc', 0], ['ncei19_n41x25_w074x00_2015v1_WGS84.nc', 'ncei19_n41x00_w073x75_2015v1_WGS84.nc', 'ncei19_n40x75_w074x00_2015v1_WGS84.nc', 'ncei19_n41x00_w074x25_2015v1_WGS84.nc', 0, 'ncei19_n41x25_w073x75_2015v1_WGS84.nc', 'ncei19_n40x75_w074x25_2015v1_WGS84.nc', 'ncei19_n40x75_w073x75_2015v1_WGS84.nc'], ['ncei19_n39x25_w075x00_2018v2_WGS84.nc', 0, 0, 'ncei19_n39x00_w075x25_2014v1_WGS84.nc', 'ncei19_n39x25_w075x25_2018v2_WGS84.nc', 'ncei19_n39x25_w074x75_2018v2_WGS84.nc', 0, 0], ['ncei19_n40x50_w074x25_2018v2_WGS84.nc', 'ncei19_n40x25_w074x00_2018v2_WGS84.nc', 'ncei19_n40x00_w074x25_2018v2_WGS84.nc', 0, 0, 'ncei19_n40x50_w074x00_2018v2_WGS84.nc', 0, 0], [0, 'ncei19_n41x00_w074x00_2015v1_WGS84.nc', 'ncei19_n40x75_w074x25_2015v1_WGS84.nc', 0, 0, 'ncei19_n41x25_w074x00_2015v1_WGS84.nc', 0, 'ncei19_n40x75_w074x00_2015v1_WGS84.nc'], ['ncei19_n39x25_w075x25_2018v2_WGS84.nc', 'ncei19_n39x00_w075x00_2018v2_WGS84.nc', 0, 'ncei19_n39x00_w075x50_2014v1_WGS84.nc', 'ncei19_n39x25_w075x50_2014v1_WGS84.nc', 'ncei19_n39x25_w075x00_2018v2_WGS84.nc', 0, 0], [0, 0, 0, 'ncei19_n40x25_w075x00_2014v1_WGS84.nc', 0, 0, 0, 0], ['ncei19_n41x50_w072x00_2016v1_WGS84.nc', 0, 0, 'ncei19_n41x25_w072x25_2015v1_WGS84.nc', 'ncei19_n41x50_w072x25_2016v1_WGS84.nc', 0, 'ncei19_n41x00_w072x25_2015v1_WGS84.nc', 0], ['ncei19_n39x25_w075x50_2014v1_WGS84.nc', 'ncei19_n39x00_w075x25_2014v1_WGS84.nc', 0, 0, 0, 'ncei19_n39x25_w075x25_2018v2_WGS84.nc', 0, 0], [0, 'ncei19_n40x25_w074x75_2014v1_WGS84.nc', 0, 'ncei19_n40x25_w075x25_2014v1_WGS84.nc', 0, 0, 'ncei19_n40x00_w075x25_2014v1_WGS84.nc', 0], ['ncei19_n41x50_w072x25_2016v1_WGS84.nc', 'ncei19_n41x25_w072x00_2015v1_WGS84.nc', 'ncei19_n41x00_w072x25_2015v1_WGS84.nc', 'ncei19_n41x25_w072x50_2015v1_WGS84.nc', 'ncei19_n41x50_w072x50_2016v1_WGS84.nc', 'ncei19_n41x50_w072x00_2016v1_WGS84.nc', 'ncei19_n41x00_w072x50_2015v1_WGS84.nc', 0], ['ncei19_n39x50_w074x75_2018v2_WGS84.nc', 0, 0, 'ncei19_n39x25_w075x00_2018v2_WGS84.nc', 0, 'ncei19_n39x50_w074x50_2018v2_WGS84.nc', 'ncei19_n39x00_w075x00_2018v2_WGS84.nc', 0], [0, 'ncei19_n40x25_w075x00_2014v1_WGS84.nc', 'ncei19_n40x00_w075x25_2014v1_WGS84.nc', 0, 0, 0, 'ncei19_n40x00_w075x50_2014v1_WGS84.nc', 0], ['ncei19_n41x50_w072x50_2016v1_WGS84.nc', 'ncei19_n41x25_w072x25_2015v1_WGS84.nc', 'ncei19_n41x00_w072x50_2015v1_WGS84.nc', 'ncei19_n41x25_w072x75_2015v1_WGS84.nc', 'ncei19_n41x50_w072x75_2016v1_WGS84.nc', 'ncei19_n41x50_w072x25_2016v1_WGS84.nc', 'ncei19_n41x00_w072x75_2015v1_WGS84.nc', 'ncei19_n41x00_w072x25_2015v1_WGS84.nc'], [0, 'ncei19_n39x25_w074x75_2018v2_WGS84.nc', 'ncei19_n39x00_w075x00_2018v2_WGS84.nc', 'ncei19_n39x25_w075x25_2018v2_WGS84.nc', 'ncei19_n39x50_w075x25_2018v2_WGS84.nc', 'ncei19_n39x50_w074x75_2018v2_WGS84.nc', 'ncei19_n39x00_w075x25_2014v1_WGS84.nc', 0], ['ncei19_n40x75_w074x00_2015v1_WGS84.nc', 0, 'ncei19_n40x25_w074x00_2018v2_WGS84.nc', 'ncei19_n40x50_w074x25_2018v2_WGS84.nc', 'ncei19_n40x75_w074x25_2015v1_WGS84.nc', 'ncei19_n40x75_w073x75_2015v1_WGS84.nc', 'ncei19_n40x25_w074x25_2018v2_WGS84.nc', 0], ['ncei19_n41x50_w072x75_2016v1_WGS84.nc', 'ncei19_n41x25_w072x50_2015v1_WGS84.nc', 'ncei19_n41x00_w072x75_2015v1_WGS84.nc', 'ncei19_n41x25_w073x00_2016v1_WGS84.nc', 'ncei19_n41x50_w073x00_2016v1_WGS84.nc', 'ncei19_n41x50_w072x50_2016v1_WGS84.nc', 'ncei19_n41x00_w073x00_2015v1_WGS84.nc', 'ncei19_n41x00_w072x50_2015v1_WGS84.nc'], ['ncei19_n39x50_w075x25_2018v2_WGS84.nc', 'ncei19_n39x25_w075x00_2018v2_WGS84.nc', 'ncei19_n39x00_w075x25_2014v1_WGS84.nc', 'ncei19_n39x25_w075x50_2014v1_WGS84.nc', 'ncei19_n39x50_w075x50_2018v2_WGS84.nc', 0, 'ncei19_n39x00_w075x50_2014v1_WGS84.nc', 'ncei19_n39x00_w075x00_2018v2_WGS84.nc'], ['ncei19_n40x75_w074x25_2015v1_WGS84.nc', 'ncei19_n40x50_w074x00_2018v2_WGS84.nc', 'ncei19_n40x25_w074x25_2018v2_WGS84.nc', 0, 0, 'ncei19_n40x75_w074x00_2015v1_WGS84.nc', 0, 'ncei19_n40x25_w074x00_2018v2_WGS84.nc'], ['ncei19_n41x50_w073x00_2016v1_WGS84.nc', 'ncei19_n41x25_w072x75_2015v1_WGS84.nc', 'ncei19_n41x00_w073x00_2015v1_WGS84.nc', 'ncei19_n41x25_w073x25_2016v1_WGS84.nc', 0, 'ncei19_n41x50_w072x75_2016v1_WGS84.nc', 'ncei19_n41x00_w073x25_2015v1_WGS84.nc', 'ncei19_n41x00_w072x75_2015v1_WGS84.nc'], ['ncei19_n39x50_w075x50_2018v2_WGS84.nc', 'ncei19_n39x25_w075x25_2018v2_WGS84.nc', 'ncei19_n39x00_w075x50_2014v1_WGS84.nc', 0, 'ncei19_n39x50_w075x75_2014v1_WGS84.nc', 'ncei19_n39x50_w075x25_2018v2_WGS84.nc', 0, 'ncei19_n39x00_w075x25_2014v1_WGS84.nc'], ['ncei19_n41x00_w073x00_2015v1_WGS84.nc', 0, 0, 'ncei19_n40x75_w073x25_2015v1_WGS84.nc', 'ncei19_n41x00_w073x25_2015v1_WGS84.nc', 'ncei19_n41x00_w072x75_2015v1_WGS84.nc', 0, 0], [0, 'ncei19_n41x25_w073x00_2016v1_WGS84.nc', 'ncei19_n41x00_w073x25_2015v1_WGS84.nc', 'ncei19_n41x25_w073x50_2015v1_WGS84.nc', 0, 'ncei19_n41x50_w073x00_2016v1_WGS84.nc', 'ncei19_n41x00_w073x50_2015v1_WGS84.nc', 'ncei19_n41x00_w073x00_2015v1_WGS84.nc'], ['ncei19_n39x75_w074x50_2018v2_WGS84.nc', 0, 0, 'ncei19_n39x50_w074x75_2018v2_WGS84.nc', 0, 'ncei19_n39x75_w074x25_2018v2_WGS84.nc', 'ncei19_n39x25_w074x75_2018v2_WGS84.nc', 0], ['ncei19_n41x00_w073x25_2015v1_WGS84.nc', 'ncei19_n40x75_w073x00_2015v1_WGS84.nc', 0, 'ncei19_n40x75_w073x50_2015v1_WGS84.nc', 'ncei19_n41x00_w073x50_2015v1_WGS84.nc', 'ncei19_n41x00_w073x00_2015v1_WGS84.nc', 0, 0], [0, 'ncei19_n41x25_w073x25_2016v1_WGS84.nc', 'ncei19_n41x00_w073x50_2015v1_WGS84.nc', 'ncei19_n41x25_w073x75_2015v1_WGS84.nc', 0, 0, 'ncei19_n41x00_w073x75_2015v1_WGS84.nc', 'ncei19_n41x00_w073x25_2015v1_WGS84.nc'], [0, 'ncei19_n39x50_w074x50_2018v2_WGS84.nc', 'ncei19_n39x25_w074x75_2018v2_WGS84.nc', 0, 0, 'ncei19_n39x75_w074x50_2018v2_WGS84.nc', 'ncei19_n39x25_w075x00_2018v2_WGS84.nc', 0], ['ncei19_n41x00_w073x50_2015v1_WGS84.nc', 'ncei19_n40x75_w073x25_2015v1_WGS84.nc', 0, 'ncei19_n40x75_w073x75_2015v1_WGS84.nc', 'ncei19_n41x00_w073x75_2015v1_WGS84.nc', 'ncei19_n41x00_w073x25_2015v1_WGS84.nc', 0, 0], [0, 'ncei19_n41x25_w073x50_2015v1_WGS84.nc', 'ncei19_n41x00_w073x75_2015v1_WGS84.nc', 'ncei19_n41x25_w074x00_2015v1_WGS84.nc', 'ncei19_n41x50_w074x00_2015v1_WGS84.nc', 0, 'ncei19_n41x00_w074x00_2015v1_WGS84.nc', 'ncei19_n41x00_w073x50_2015v1_WGS84.nc'], [0, 0, 'ncei19_n39x25_w075x25_2018v2_WGS84.nc', 'ncei19_n39x50_w075x50_2018v2_WGS84.nc', 'ncei19_n39x75_w075x50_2014v1_WGS84.nc', 0, 'ncei19_n39x25_w075x50_2014v1_WGS84.nc', 'ncei19_n39x25_w075x00_2018v2_WGS84.nc'], ['ncei19_n41x00_w073x75_2015v1_WGS84.nc', 'ncei19_n40x75_w073x50_2015v1_WGS84.nc', 0, 'ncei19_n40x75_w074x00_2015v1_WGS84.nc', 'ncei19_n41x00_w074x00_2015v1_WGS84.nc', 'ncei19_n41x00_w073x50_2015v1_WGS84.nc', 'ncei19_n40x50_w074x00_2018v2_WGS84.nc', 0], ['ncei19_n41x50_w074x00_2015v1_WGS84.nc', 'ncei19_n41x25_w073x75_2015v1_WGS84.nc', 'ncei19_n41x00_w074x00_2015v1_WGS84.nc', 0, 'ncei19_n41x50_w074x25_2015v1_WGS84.nc', 0, 'ncei19_n41x00_w074x25_2015v1_WGS84.nc', 'ncei19_n41x00_w073x75_2015v1_WGS84.nc'], ['ncei19_n39x75_w075x50_2014v1_WGS84.nc', 'ncei19_n39x50_w075x25_2018v2_WGS84.nc', 'ncei19_n39x25_w075x50_2014v1_WGS84.nc', 'ncei19_n39x50_w075x75_2014v1_WGS84.nc', 'ncei19_n39x75_w075x75_2014v1_WGS84.nc', 0, 0, 'ncei19_n39x25_w075x25_2018v2_WGS84.nc'], ['ncei19_n41x00_w074x00_2015v1_WGS84.nc', 'ncei19_n40x75_w073x75_2015v1_WGS84.nc', 'ncei19_n40x50_w074x00_2018v2_WGS84.nc', 'ncei19_n40x75_w074x25_2015v1_WGS84.nc', 'ncei19_n41x00_w074x25_2015v1_WGS84.nc', 'ncei19_n41x00_w073x75_2015v1_WGS84.nc', 'ncei19_n40x50_w074x25_2018v2_WGS84.nc', 0], [0, 0, 'ncei19_n41x25_w072x00_2015v1_WGS84.nc', 'ncei19_n41x50_w072x25_2016v1_WGS84.nc', 0, 0, 'ncei19_n41x25_w072x25_2015v1_WGS84.nc', 0], ['ncei19_n39x75_w075x75_2014v1_WGS84.nc', 'ncei19_n39x50_w075x50_2018v2_WGS84.nc', 0, 0, 0, 'ncei19_n39x75_w075x50_2014v1_WGS84.nc', 0, 'ncei19_n39x25_w075x50_2014v1_WGS84.nc'], ['ncei19_n41x00_w074x25_2015v1_WGS84.nc', 'ncei19_n40x75_w074x00_2015v1_WGS84.nc', 'ncei19_n40x50_w074x25_2018v2_WGS84.nc', 0, 0, 'ncei19_n41x00_w074x00_2015v1_WGS84.nc', 0, 'ncei19_n40x50_w074x00_2018v2_WGS84.nc'], [0, 'ncei19_n41x50_w072x00_2016v1_WGS84.nc', 'ncei19_n41x25_w072x25_2015v1_WGS84.nc', 'ncei19_n41x50_w072x50_2016v1_WGS84.nc', 0, 0, 'ncei19_n41x25_w072x50_2015v1_WGS84.nc', 'ncei19_n41x25_w072x00_2015v1_WGS84.nc'], ['ncei19_n40x00_w074x25_2018v2_WGS84.nc', 0, 0, 'ncei19_n39x75_w074x50_2018v2_WGS84.nc', 0, 0, 'ncei19_n39x50_w074x50_2018v2_WGS84.nc', 0], ['ncei19_n41x25_w072x25_2015v1_WGS84.nc', 0, 0, 'ncei19_n41x00_w072x50_2015v1_WGS84.nc', 'ncei19_n41x25_w072x50_2015v1_WGS84.nc', 'ncei19_n41x25_w072x00_2015v1_WGS84.nc', 0, 0], [0, 'ncei19_n41x50_w072x25_2016v1_WGS84.nc', 'ncei19_n41x25_w072x50_2015v1_WGS84.nc', 'ncei19_n41x50_w072x75_2016v1_WGS84.nc', 0, 0, 'ncei19_n41x25_w072x75_2015v1_WGS84.nc', 'ncei19_n41x25_w072x25_2015v1_WGS84.nc'], [0, 'ncei19_n39x75_w074x25_2018v2_WGS84.nc', 'ncei19_n39x50_w074x50_2018v2_WGS84.nc', 0, 0, 'ncei19_n40x00_w074x25_2018v2_WGS84.nc', 'ncei19_n39x50_w074x75_2018v2_WGS84.nc', 0], ['ncei19_n41x25_w072x50_2015v1_WGS84.nc', 'ncei19_n41x00_w072x25_2015v1_WGS84.nc', 0, 'ncei19_n41x00_w072x75_2015v1_WGS84.nc', 'ncei19_n41x25_w072x75_2015v1_WGS84.nc', 'ncei19_n41x25_w072x25_2015v1_WGS84.nc', 0, 0], [0, 'ncei19_n41x50_w072x50_2016v1_WGS84.nc', 'ncei19_n41x25_w072x75_2015v1_WGS84.nc', 'ncei19_n41x50_w073x00_2016v1_WGS84.nc', 0, 0, 'ncei19_n41x25_w073x00_2016v1_WGS84.nc', 'ncei19_n41x25_w072x50_2015v1_WGS84.nc'], ['ncei19_n40x00_w075x50_2014v1_WGS84.nc', 0, 'ncei19_n39x50_w075x50_2018v2_WGS84.nc', 'ncei19_n39x75_w075x75_2014v1_WGS84.nc', 0, 'ncei19_n40x00_w075x25_2014v1_WGS84.nc', 'ncei19_n39x50_w075x75_2014v1_WGS84.nc', 'ncei19_n39x50_w075x25_2018v2_WGS84.nc'], ['ncei19_n41x25_w072x75_2015v1_WGS84.nc', 'ncei19_n41x00_w072x50_2015v1_WGS84.nc', 0, 'ncei19_n41x00_w073x00_2015v1_WGS84.nc', 'ncei19_n41x25_w073x00_2016v1_WGS84.nc', 'ncei19_n41x25_w072x50_2015v1_WGS84.nc', 'ncei19_n40x75_w073x00_2015v1_WGS84.nc', 0], [0, 'ncei19_n41x50_w072x75_2016v1_WGS84.nc', 'ncei19_n41x25_w073x00_2016v1_WGS84.nc', 0, 0, 0, 'ncei19_n41x25_w073x25_2016v1_WGS84.nc', 'ncei19_n41x25_w072x75_2015v1_WGS84.nc'], [0, 'ncei19_n39x75_w075x50_2014v1_WGS84.nc', 'ncei19_n39x50_w075x75_2014v1_WGS84.nc', 0, 0, 'ncei19_n40x00_w075x50_2014v1_WGS84.nc', 0, 'ncei19_n39x50_w075x50_2018v2_WGS84.nc'], ['ncei19_n41x25_w073x00_2016v1_WGS84.nc', 'ncei19_n41x00_w072x75_2015v1_WGS84.nc', 'ncei19_n40x75_w073x00_2015v1_WGS84.nc', 'ncei19_n41x00_w073x25_2015v1_WGS84.nc', 'ncei19_n41x25_w073x25_2016v1_WGS84.nc', 'ncei19_n41x25_w072x75_2015v1_WGS84.nc', 'ncei19_n40x75_w073x25_2015v1_WGS84.nc', 0], [0, 0, 'ncei19_n41x25_w074x00_2015v1_WGS84.nc', 'ncei19_n41x50_w074x25_2015v1_WGS84.nc', 0, 0, 0, 'ncei19_n41x25_w073x75_2015v1_WGS84.nc'], ['ncei19_n40x25_w074x25_2018v2_WGS84.nc', 0, 'ncei19_n39x75_w074x25_2018v2_WGS84.nc', 0, 0, 'ncei19_n40x25_w074x00_2018v2_WGS84.nc', 'ncei19_n39x75_w074x50_2018v2_WGS84.nc', 0], ['ncei19_n41x25_w073x25_2016v1_WGS84.nc', 'ncei19_n41x00_w073x00_2015v1_WGS84.nc', 'ncei19_n40x75_w073x25_2015v1_WGS84.nc', 'ncei19_n41x00_w073x50_2015v1_WGS84.nc', 'ncei19_n41x25_w073x50_2015v1_WGS84.nc', 'ncei19_n41x25_w073x00_2016v1_WGS84.nc', 'ncei19_n40x75_w073x50_2015v1_WGS84.nc', 'ncei19_n40x75_w073x00_2015v1_WGS84.nc'], [0, 'ncei19_n41x50_w074x00_2015v1_WGS84.nc', 0, 0, 0, 0, 0, 'ncei19_n41x25_w074x00_2015v1_WGS84.nc'], ['ncei19_n40x25_w075x25_2014v1_WGS84.nc', 0, 0, 'ncei19_n40x00_w075x50_2014v1_WGS84.nc', 0, 'ncei19_n40x25_w075x00_2014v1_WGS84.nc', 'ncei19_n39x75_w075x50_2014v1_WGS84.nc', 0], ['ncei19_n41x25_w073x50_2015v1_WGS84.nc', 'ncei19_n41x00_w073x25_2015v1_WGS84.nc', 'ncei19_n40x75_w073x50_2015v1_WGS84.nc', 'ncei19_n41x00_w073x75_2015v1_WGS84.nc', 'ncei19_n41x25_w073x75_2015v1_WGS84.nc', 'ncei19_n41x25_w073x25_2016v1_WGS84.nc', 'ncei19_n40x75_w073x75_2015v1_WGS84.nc', 'ncei19_n40x75_w073x25_2015v1_WGS84.nc'], [0, 'ncei19_n40x00_w075x25_2014v1_WGS84.nc', 'ncei19_n39x75_w075x50_2014v1_WGS84.nc', 0, 0, 'ncei19_n40x25_w075x25_2014v1_WGS84.nc', 'ncei19_n39x75_w075x75_2014v1_WGS84.nc', 0], ['ncei19_n41x25_w073x75_2015v1_WGS84.nc', 'ncei19_n41x00_w073x50_2015v1_WGS84.nc', 'ncei19_n40x75_w073x75_2015v1_WGS84.nc', 'ncei19_n41x00_w074x00_2015v1_WGS84.nc', 'ncei19_n41x25_w074x00_2015v1_WGS84.nc', 'ncei19_n41x25_w073x50_2015v1_WGS84.nc', 'ncei19_n40x75_w074x00_2015v1_WGS84.nc', 'ncei19_n40x75_w073x50_2015v1_WGS84.nc']]
     working_class = string_parse_function(working_file_list)
-    working_class.create_netcdf()
-    working_class.cut_string()
-    working_class.check_boxes()
-    working_class.add_data()
+    # working_class.cut_string()
+    # working_class.check_boxes()
     # new_file_names = working_class.new_file_names
     # surrounding_file_names = working_class.surrounding_file_names
-    working_class2 = overlapping_data(working_surrounding_files, working_new_file_names)
+    # columns = ["North", "East", "South", "West", "Northwest", "Northeast", "Southwest", "Southeast"]
+    # table = pd.DataFrame({
+    #     "Box" : working_class.coordinate_list,
+    #     "Coordinates" : working_class.surrounding_boxes_list
+    #     })
+    # table.to_excel('full_table.xlsx', index=False)
+    # file_name_df = pd.DataFrame(
+    #     surrounding_file_names,
+    #     columns = columns)
+    # #file_name_df.to_csv('debug_table', index = False)
+    # coordinates_table = pd.DataFrame({
+    #     "Box" : working_file_list,
+    # })
+    # coordinates_table = coordinates_table.reset_index(drop=True)
+    # file_name_df = file_name_df.reset_index(drop=True)
+    # table = pd.concat([coordinates_table, file_name_df], axis=1)
+    # table.to_csv('full_table2.csv', index=False)
+    # table.to_excel('full_table2.xlsx', index = False)
+    
+    # working_class.create_netcdf()
+    # working_class.add_data()
+    working_class2 = overlapping_data()
     working_class2.eliminate_repeats()
     working_class2.fill_lat_lon()
 
