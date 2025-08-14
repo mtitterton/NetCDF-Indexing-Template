@@ -1,20 +1,20 @@
 Project Documentation: NetCDF File Indexing Template
 
-Overview:
+Overview:  
 This program expands NETCDF files by indexing by perfoming the following operations:
 1. Finding the surrounding files for each file and indexing data from each surrounding file into a larger NETCDF
 2. Removing the repeats in latitude, longitude, and bathymetry data points and saving as a final NETCDF file
 
-This program is designed to be dynamic by adjusting the requested indexing size and is suitable for applications in climate modeling
+This program is designed to be dynamic by adjusting the requested indexing size and is suitable for applications in climate modeling.
 
-Features
-Input handling: Accepts a list of NETCDF file names as input
-String Manipulation: Maps each file name to its associated coordinate (if file name is related to a physical coordinate)
-Data Expansion: Merges data from neighboring files based on if the surrounding coordinate is in the mapping of the file names
-Duplicate Removal: Finds the overlaps between latitude and longitude for each indexing, and eliminates repeats in bathymetry data.
-Latitude and Longitude Extrapolation: Takes each latitude and longitude data for the final NETCDF file and extrapolates an array so each coordinate is individually spaced.
+Features  
+Input handling: Accepts a list of NETCDF file names as input  
+String Manipulation: Maps each file name to its associated coordinate (if file name is related to a physical coordinate)  
+Data Expansion: Merges data from neighboring files based on if the surrounding coordinate is in the mapping of the file names  
+Duplicate Removal: Finds the overlaps between latitude and longitude for each indexing, and eliminates repeats in bathymetry data.  
+Latitude and Longitude Extrapolation: Takes each latitude and longitude data for the final NETCDF file and extrapolates an array so each coordinate is individually spaced.  
 
-Workflow
+Workflow  
 The program follows these steps:
 1. Input loading: 
 - Reads in all NetCDF files and converts string names to coordinates
@@ -64,11 +64,11 @@ Classes
 - Optional: Method "fill_lat_lon" is used to adjust the latitude and longitude arrays from the final dataset, as indexing can sometimes leads to slightly mismatches in the spacing between values with rounding errors. This method doesn't have to be done, but it is helpful for more consistent NetCDF files.
 
 Algorithm Details:
-Data Expansion
+Data Expansion  
 This program identifies surrounding files based on converting string names to coordinates for comparison
 
 
-Output
+Output  
 The output is a list of NetCDF files with:
 - Expanded data from surrounding files
 - No duplicate entries
