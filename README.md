@@ -28,3 +28,11 @@ pip install -r requirements.txt
 
 ## Usage
 You can find detailed usage instructions in the docs/usage.md file.
+
+## Requirements
+- Python 3.8+
+- netCDF4
+- numpy
+- pandas
+- xarray
+- os
