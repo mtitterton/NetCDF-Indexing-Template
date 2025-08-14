@@ -24,6 +24,7 @@ Clone the repository and install dependencies:
 git clone https://github.com/mtitterton/NetCDF-Indexing-Template.git
 cd NetCDF-Indexing-Template
 pip install -r requirements.txt
+```
 
 ## Usage
 You can find detailed usage instructions in the docs/usage.md file.
