@@ -4,6 +4,7 @@ Overview:
 This program expands NETCDF files by indexing by perfoming the following operations:
 1. Finding the surrounding files for each file and indexing data from each surrounding file into a larger NETCDF
 2. Removing the repeats in latitude, longitude, and bathymetry data points and saving as a final NETCDF file
+There is also a jupyter notebook to graph individual bathymetry and topography data.
 
 This program is designed to be dynamic by adjusting the requested indexing size and is suitable for applications in climate modeling.
 
@@ -13,6 +14,7 @@ String Manipulation: Maps each file name to its associated coordinate (if file n
 Data Expansion: Merges data from neighboring files based on if the surrounding coordinate is in the mapping of the file names  
 Duplicate Removal: Finds the overlaps between latitude and longitude for each indexing, and eliminates repeats in bathymetry data.  
 Latitude and Longitude Extrapolation: Takes each latitude and longitude data for the final NETCDF file and extrapolates an array so each coordinate is individually spaced.  
+Bathymetry Mapping: Plots the data from each NetCDF file for visualization.  
 
 Workflow  
 The program follows these steps:
@@ -29,6 +31,9 @@ The program follows these steps:
 4. Output Generation:
 - Saves the processed dataset as a final new NetCDF file
 
+5. Data Mapping:
+- Graphs bathymetry and topograph data against latitude and longitude for each file and surrounding files  
+
 
 Usage Instructions
 Prerequisites:
@@ -44,7 +49,11 @@ Install dependencies using pip:
 pip install netCDF numpy os xarray
 
 Code Structure
-Classes
+
+
+**full_program.py**
+Classes  
+
 1. File_list:
 - Parent class that is used to adjust the desired indexing size from surrounding files (val)
 - Establish the size of each file within this class (Nx, Ny)
@@ -62,6 +71,13 @@ Classes
 - Method "eliminate_repeats" creates a final NetCDF for each file, evaluates the latitude and longitude values at each boundary (which occur at the original border of the file as this is where the data is added on), find the repeats, then indexes the data accordingly to eliminate the repeats using the same process as in class string_parse_function.
 - Method "interpolate_lat_lon" is used later on in method "fill_lat_lon", taking in an array (using lat or lon), finding the spacing between values, and then interpolating the values on each end so each point is evenly spaced.
 - Optional: Method "fill_lat_lon" is used to adjust the latitude and longitude arrays from the final dataset, as indexing can sometimes leads to slightly mismatches in the spacing between values with rounding errors. This method doesn't have to be done, but it is helpful for more consistent NetCDF files.
+
+
+**graph_maker.ipynb**
+- Takes individual NetCDF files and graphs bathymetry (Band1) data against latitude and longitude
+- Also intakes file and surrounding files to create mapping of 9 plots
+
+$$ LEFT HERE $$
 
 Algorithm Details:
 Data Expansion  
