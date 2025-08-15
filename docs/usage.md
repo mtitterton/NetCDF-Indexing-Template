@@ -1,6 +1,6 @@
-Project Documentation: NetCDF File Indexing Template
+# Project Documentation: NetCDF File Indexing Template
 
-Overview:  
+## Overview
 This program expands NETCDF files by indexing by perfoming the following operations:
 1. Finding the surrounding files for each file and indexing data from each surrounding file into a larger NETCDF
 2. Removing the repeats in latitude, longitude, and bathymetry data points and saving as a final NETCDF file
@@ -8,15 +8,15 @@ There is also a jupyter notebook to graph individual bathymetry and topography d
 
 This program is designed to be dynamic by adjusting the requested indexing size and is suitable for applications in climate modeling.
 
-Features  
-Input handling: Accepts a list of NETCDF file names as input  
-String Manipulation: Maps each file name to its associated coordinate (if file name is related to a physical coordinate)  
-Data Expansion: Merges data from neighboring files based on if the surrounding coordinate is in the mapping of the file names  
-Duplicate Removal: Finds the overlaps between latitude and longitude for each indexing, and eliminates repeats in bathymetry data.  
-Latitude and Longitude Extrapolation: Takes each latitude and longitude data for the final NETCDF file and extrapolates an array so each coordinate is individually spaced.  
-Bathymetry Mapping: Plots the data from each NetCDF file for visualization.  
+## Features  
+- **Input handling**: Accepts a list of NETCDF file names as input  
+- **String Manipulation**: Maps each file name to its associated coordinate (if file name is related to a physical coordinate)  
+- **Data Expansion**: Merges data from neighboring files based on if the surrounding coordinate is in the mapping of the file names  
+- **Duplicate Removal**: Finds the overlaps between latitude and longitude for each indexing, and eliminates repeats in bathymetry data.  
+- **Latitude and Longitude Extrapolation**: Takes each latitude and longitude data for the final NETCDF file and extrapolates an array so each coordinate is individually spaced.  
+- **Bathymetry Mapping**: Plots the data from each NetCDF file for visualization.  
 
-Workflow  
+## Workflow  
 The program follows these steps:
 1. Input loading: 
 - Reads in all NetCDF files and converts string names to coordinates
@@ -35,8 +35,8 @@ The program follows these steps:
 - Graphs bathymetry and topograph data against latitude and longitude for each file and surrounding files  
 
 
-Usage Instructions
-Prerequisites:
+## Usage Instructions
+**Prerequisites**
 - Python 3.11.9
 - Required libraries: 
     - xarray for opening and reading datasets
@@ -48,12 +48,10 @@ Install dependencies using pip:
 
 pip install netCDF numpy os xarray
 
-Code Structure
-
+## Code Structure
 
 **full_program.py**
 Classes  
-
 1. File_list:
 - Parent class that is used to adjust the desired indexing size from surrounding files (val)
 - Establish the size of each file within this class (Nx, Ny)
@@ -75,26 +73,23 @@ Classes
 
 **graph_maker.ipynb**
 - Takes individual NetCDF files and graphs bathymetry (Band1) data against latitude and longitude
-- Also intakes file and surrounding files to create mapping of 9 plots
+- Also intakes data from file and surrounding files to create mapping of 9 plots
 
-$$ LEFT HERE $$
-
-Algorithm Details:
-Data Expansion  
-This program identifies surrounding files based on converting string names to coordinates for comparison
+## Algorithm Details
+**Data Expansion:** This program identifies surrounding files based on converting string names to coordinates for comparison
 
 
-Output  
+## Output  
 The output is a list of NetCDF files with:
 - Expanded data from surrounding files
 - No duplicate entries
 
-Error Handling:
+## Error Handling
 This program is heavily dependent on the fact that all NetCDF file sizes are the same. If they are not, errors will be thrown, and indexing should be done manually.
 This program does include error handling for:
 - If latitude and longitude repeats cannot be found to the rounding specifications within the "eliminate_repeats" method in the "overlapping_data" class, then program will return a message saying so. However, this will cause further issues later with indexing for repeats.
 Files not of the same sizes or with issues in overlapping data should be handled manually uses similar techniques to the program
 
-Future Improvements
+## Future Improvements
 - Create a more dynamic system so each file does not have to be the same size
 - Create an alternate method for dealing with individual files that don't fit with the sizes and repeat definitions of the program
