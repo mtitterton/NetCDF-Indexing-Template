@@ -5,6 +5,7 @@ This program:
 1. Converts a string name into geographic coordinates
 2. Indexes data from surrounding coordinates within the NetCDF file.
 3. Removes duplicate entries from the file to ensure clean, consistent datasets.
+4. Graphs topography and bathymetry data to see ocean mapping and surrounding files mapping.
 
 ---
 
@@ -14,6 +15,7 @@ This program:
 - **Spatial indexing** — Sorts through list and finds surrounding coordinates for indexing into newly sized NetCDF
 - **Duplicate removal** — Removes overlaps after indexing surrounding data
 - **Batch support** — Works on list of NetCDF files in a directory
+- **Bathymetry/Topography Visualization** - Graphs bathymetry and topography data versus latitude and longitude to help with visualization
 
 ---
 
